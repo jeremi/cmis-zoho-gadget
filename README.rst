@@ -9,5 +9,6 @@ Install
 =======
 
 * Activate groovy REST services in GateIn: http://blog.jeremi.info/entry/how-to-activate-groovy-rest-services-in-gatein-beta5
-* use GateIn groovy tools to push the files to your GateIn installation: http://github.com/jeremi/gatein-groovy-tools
+* Update the file app.confwith your settings
+* Use GateIn groovy tools to push the files to your GateIn installation: http://github.com/jeremi/gatein-groovy-tools
 
