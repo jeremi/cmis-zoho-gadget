@@ -1,0 +1,369 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Module>
+   <ModulePrefs title="GateIn - CMIS - Zoho"
+                title_url="http://www.exoplatform.com"
+                directory_title="Edit files of a CMIS repository in Zoho"
+                author="Jeremi Joslin"
+                author_email="jeremi23@gmail.com"
+                author_affiliation="eXo Platform"
+                author_link="http://www.jeremi.info"
+                description="Edit files of a CMIS repository in Zoho." 
+                author_photo=""
+                screenshot=""
+                thumbnail=""
+                height="285"
+                scrolling="true">
+       <Require feature="settitle"/>
+       <Require feature="minimessage"/>
+   </ModulePrefs>
+   <UserPref name="server_url" datatype="string" default_value="http://www.xcmis.org/rest/private/cmisatom"/>
+   <UserPref name="login" datatype="string" default_value="demo"/>
+   <UserPref name="password" datatype="string" default_value="gtn"/>
+   <Content type="html">
+    <![CDATA[
+        <style>
+            /*
+                Copyright (c) 2009, Yahoo! Inc. All rights reserved.
+                Code licensed under the BSD License:
+                http://developer.yahoo.net/yui/license.txt
+                version: 3.0.0
+                build: 1549
+            */
+            /*
+                TODO will need to remove settings on HTML since we can't namespace it.
+                TODO with the prefix, should I group by selector or property for weight savings?
+            */
+            html{
+                color:#000;
+                background:#FFF;
+            }
+            /*
+                TODO remove settings on BODY since we can't namespace it.
+            */
+            /*
+                TODO test putting a class on HEAD.
+                    - Fails on FF.
+            */
+            body,
+            div,
+            dl,
+            dt,
+            dd,
+            ul,
+            ol,
+            li,
+            h1,
+            h2,
+            h3,
+            h4,
+            h5,
+            h6,
+            pre,
+            code,
+            form,
+            fieldset,
+            legend,
+            input,
+            textarea,
+            p,
+            blockquote,
+            th,
+            td {
+                margin:0;
+                padding:0;
+            }
+            table {
+                border-collapse:collapse;
+                border-spacing:0;
+            }
+            fieldset,
+            img {
+                border:0;
+            }
+            /*
+                TODO think about hanlding inheritence differently, maybe letting IE6 fail a bit...
+            */
+            address,
+            caption,
+            cite,
+            code,
+            dfn,
+            em,
+            strong,
+            th,
+            var {
+                font-style:normal;
+                font-weight:normal;
+            }
+            /*
+                TODO Figure out where this list-style rule is best set. Hedger has a request to investigate.
+            */
+            li {
+                list-style:none;
+            }
+
+            caption,
+            th {
+                text-align:left;
+            }
+            h1,
+            h2,
+            h3,
+            h4,
+            h5,
+            h6 {
+                font-size:100%;
+                font-weight:normal;
+            }
+            q:before,
+            q:after {
+                content:'';
+            }
+            abbr,
+            acronym {
+                border:0;
+                font-variant:normal;
+            }
+            /* to preserve line-height and selector appearance */
+            sup {
+                vertical-align:text-top;
+            }
+            sub {
+                vertical-align:text-bottom;
+            }
+            input,
+            textarea,
+            select {
+                font-family:inherit;
+                font-size:inherit;
+                font-weight:inherit;
+            }
+            /*to enable resizing for IE*/
+            input,
+            textarea,
+            select {
+                *font-size:100%;
+            }
+            /*because legend doesn't inherit in IE */
+            legend {
+                color:#000;
+            }
+
+            /*
+             * our CSS
+             */
+
+            body, td, div, span, p {
+                font-family:Tahoma,Verdana,Arial,Helvetica,sans-serif;
+                font-size:12px;
+            }
+
+
+            #files {
+                height:268px;
+                overflow-y:auto;
+            }
+
+            .edit {
+                background:url(icon-edit.png) no-repeat;
+                width:16px;
+                height:16px;
+                display:block;
+                text-indent:-900px;
+                float:left;
+                margin-left:2px;
+            }
+
+            .filename {
+                float:left;
+            }
+
+            #files li {
+                height:16px;
+                padding-left:18px;
+                padding-top:2px;
+                clear:both;
+            }
+
+            #files a {
+                color:black;
+                text-decoration:none;
+               
+            }
+
+            #files a:hover {
+                color:#058EE6;
+            }
+
+            #footer {
+                border-top-color:#C3C3C3;
+                border-top-style:solid;
+                border-top-width:1px;
+                height:16px;
+
+            }
+
+            /*
+             * To have it working properly in Jira, the link to images needs to be the absolute link
+             */
+
+            li.folder {
+                background:url(icon-folder.png) no-repeat;
+            }
+
+            .format-other {
+                background:url(icon-other.png) no-repeat;
+            }
+
+            .format-image {
+                background:url(icon-image.png) no-repeat;
+            }
+            .format-doc {
+                background:url(icon-word.png) no-repeat;
+            }
+            .format-xls {
+                background:url(icon-excel.png) no-repeat;
+            }
+            .format-ppt {
+                background:url(icon-powerpoint.png) no-repeat;
+            }
+
+        </style>
+
+        <!-- Because jira don't rewrite the links, we need to set the full path-->
+        <script src="jquery.js"></script>
+        <script src="jquery.cmis.js"></script>
+
+        <script>
+            var prefs = new gadgets.Prefs(),
+                zoho_format_handled = {doc:true, rtf:true, odt:true, sxw:true, html:true, txt:true, xls:true, sxc:true, csv:true, ppt:true, pps:true},
+                image_format = {jpg:true, png:true, gif:true},
+                doc_format = {doc:true, rtf:true, odt:true, sxw:true, html:true, txt:true},
+                xls_format = {xls:true, sxc:true, csv:true},
+                ppt_format = {ppt:true, pps:true},
+                path_feed_cache = [];
+
+             $.get_cmis = function(url, postdata, callback) {
+                var params = {};
+
+                postdata["url"] = url;
+                postdata["login"] = prefs.getString("login");
+                postdata["password"] = prefs.getString("password");
+                params[gadgets.io.RequestParameters.METHOD] = gadgets.io.MethodType.POST;
+                params[gadgets.io.RequestParameters.CONTENT_TYPE] = gadgets.io.ContentType.DOM;
+                params[gadgets.io.RequestParameters.POST_DATA] = gadgets.io.encodeValues(postdata);
+                url = 'http://localhost:8080/rest/proxy/basic_auth';
+
+                gadgets.io.makeRequest(url, callback, params);
+            }
+
+
+            var current_workspace = null, current_node = null;
+            $(function() {
+                $.get_cmis(prefs.getString("server_url"), {}, function(res) {
+                    //We take the first one listed
+                    current_workspace = CMIS.parse($(res.data))[0];
+                    gadgets.window.setTitle("GateIn - " + current_workspace.getVendorName() + " - Zoho");
+    				load_collection(current_workspace.collections["root"]);
+                });
+            });
+
+            function openInZoho(url, filename) {
+                var postdata = {}, params = {};
+
+                postdata["url"] = url;
+                postdata["filename"] = filename;
+                postdata["login"] = prefs.getString("login");
+                postdata["password"] = prefs.getString("password");
+                params[gadgets.io.RequestParameters.METHOD] = gadgets.io.MethodType.POST;
+                params[gadgets.io.RequestParameters.POST_DATA] = gadgets.io.encodeValues(postdata);
+                url = 'http://localhost:8080/rest/zoho/edit'
+
+                gadgets.io.makeRequest(url, function(res) {
+                    if (res.rc == 200) {
+                        var popup = window.open(res.data, '_blank');
+                        if (!popup) {
+                            var msg = new gadgets.MiniMessage();
+                            msg.createDismissibleMessage('You have a popup blocker, <a href="' + res.data + '" target="_blank">Click here to open zoho</a>');
+                        }
+                    } else {
+                        var msg = new gadgets.MiniMessage();
+                        msg.createDismissibleMessage('error opening in Zoho: ' + res.data)    
+                    }
+                }, params);
+            }
+
+
+            function load_collection(url) {
+                $.get_cmis(url, {}, function(res) {
+                    show(CMIS.parse($(res.data)));        
+                });
+            }
+
+            function show(current_node) {
+                path_feed_cache.push(current_node);
+                $("#files").empty().append($('<li class="folder"><a href="javascript:void(0)">..</a></li>').click(function() {
+
+                    if (path_feed_cache.length <= 1) {
+                        // We are already at the root
+                        return
+                    }
+                    // We remove the current Feed
+                    path_feed_cache.pop();
+                    // We remove the parent and display it
+                    // It will be added again
+                    show(path_feed_cache.pop());
+                }));
+                current_node.getEntries().each(function(i, entry) {
+                    var title = entry.title;
+                    if (entry.isFolder()) {
+                        $("#files").append($('<li class="folder"><a href="javascript:void(0)" class="filename">' + entry.title + "</a></li>").click(function() {
+                            load_collection(entry.getLinks("down")[0]);
+                        }));
+                    } else {
+                        var fileEl = $('<li class="file"><a href="' + entry.getContentUrl() + '" target="_blank" class="filename">' + entry.title + "</a></li>"),
+                            filename, ext;
+
+
+                        if ("cmis:contentStreamFileName" in entry.properties) {
+                            filename = entry.properties["cmis:contentStreamFileName"];
+                        } else {
+                            filename = entry.title;
+                        }
+                        ext = filename.substring(filename.lastIndexOf(".") + 1);
+                        if (image_format[ext])
+                            fileEl.addClass("format-image");
+                        else if (doc_format[ext])
+                            fileEl.addClass("format-doc");
+                        else if (ppt_format[ext])
+                            fileEl.addClass("format-ppt");
+                        else if (xls_format[ext])
+                            fileEl.addClass("format-xls");
+                        else
+                            fileEl.addClass("format-other");
+
+                        if (zoho_format_handled[ext]) {
+                            fileEl.append($('<a href="javascript:void(0)" class="edit">edit</a>').click(function(){
+                                openInZoho(entry.getLinks("edit-media")[0], filename);
+                            }));
+                        }
+                        $("#files").append(fileEl);
+                    }
+                });
+            }
+
+
+        </script>
+
+        <div style="height:285px">
+            <div id="path"></path>
+            <ul id="files">
+            
+	        </ul>
+	        <div id="footer">
+                <a href="http://www.exoplatform.com" style="float:left;" target="_blank"><img src="http://www.exoplatform.com/portal/favicon.ico" style="margin-right:5px;"/>eXo Platform</a>
+            </div>
+        </div>
+    ]]>
+   </Content>
+</Module>
